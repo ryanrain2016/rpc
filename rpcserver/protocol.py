@@ -7,7 +7,6 @@ from functools import partial, wraps
 from .exceptions import ParseError, NeedMore
 from .logger import logger
 from .parsers import MutilJsonParser
-from .utils import to_bytes, to_str
 
 
 class BaseProtocol(asyncio.Protocol):
@@ -74,7 +73,7 @@ class RPCProtocol(BaseProtocol):
         self._tasks.add(fut)
 
     def write(self, data):
-        data = to_bytes(data)
+        data = self.parser.parse(data)
         transport: asyncio.BaseTransport = self.transport
         if transport and not transport.is_closing():
             logger.info('[%s] Message write: %s' % (self._client_address, to_str(data)))

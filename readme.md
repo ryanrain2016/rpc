@@ -62,23 +62,28 @@ if __name__ == "__main__":
 # 扩展
 1. 自定义parser类可以实现自定义的协议方式
 ```python
-class BaseParser:
-    def __init__(self, protocol):
-        # protocol 为一个有on_msg方法的对象
-        # 每解析一条消息需要调用protocol.on_msg方法
-        self._protocol = protocol
-
-    def feed(self, data):
-        raise NotImplementedError
+from rpcclient.parsers import BaseParser
 
 class SomeParser(BaseParser):
     def feed(self, data):
-        # 每解析一条消息需要调用self._protocol.on_msg方法
+        # 反序列化字节流
+        # 每解析一条消息需要调用self.on_msg方法
+        # 注意处理tcp粘包
+        pass
+
+    def parse(self, msg):
+        # 每则消息序列化
+        pass
+
+    def on_msg(self, msg):
+        # 解析出一条消息后调用的方法， 默认是调用self._protocol.on_msg方法
         pass
 
 app.run(host, port, parser_factory=SomeParser)
 ```
+客户端也需要同样的解析器
 
 # TODO
 1. 超时机制
 2. 并发控制
+3. 签名校验（可通过自定义解析器实现）

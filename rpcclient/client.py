@@ -1,10 +1,12 @@
 import asyncio
 from .wrappers import AsyncWrapper, Wrapper
+from .parsers import MutilJsonParser
 
 class BaseClient:
-    def __init__(self, host, port, **kw):
+    def __init__(self, host, port, parser_factory=MutilJsonParser, **kw):
         self.host = host
         self.port = port
+        self.parser_factory=parser_factory
         self.kw = kw
         self._wrapper = None
         self._async_wrapper = None

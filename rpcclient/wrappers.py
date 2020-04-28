@@ -5,7 +5,6 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
 
 from .exceptions import ParseError
-from .parsers import MutilJsonParser
 from .utils import to_bytes
 
 class BaseWrapper:
@@ -13,7 +12,8 @@ class BaseWrapper:
         self.host = client.host
         self.port = client.port
         self.kw = client.kw
-        self._parser = MutilJsonParser(self)
+        parser_factory = client.parser_factory
+        self._parser = parser_factory(self)
         self._futs = {}
         self._is_closing = False
         self.conn = None
@@ -66,7 +66,7 @@ class Wrapper(BaseWrapper):
         self.send(data)
 
     def send(self, data):
-        data = to_bytes(data)
+        data = self._parser.parse(data)
         if self.conn:
             self.conn.send(data)
 
@@ -143,7 +143,7 @@ class AsyncWrapper(BaseWrapper, asyncio.Protocol):
         self.send(data)
 
     def send(self, data):
-        data = to_bytes(data)
+        data = self._parser.parse(data)
         if self.conn:
             self.conn.write(data)
 
