@@ -4,9 +4,10 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-from .exceptions import ParseError, NeedMore
-from .logger import logger
-from .parsers import MutilJsonParser
+from ..exceptions import ParseError, NeedMore
+from ..logger import logger
+from ..parsers import MutilJsonParser
+from ..consts import TIMEOUT
 
 
 class BaseProtocol(asyncio.Protocol):
@@ -40,6 +41,7 @@ class RPCProtocol(BaseProtocol):
         self._cumsumer = asyncio.ensure_future(self.write_back())
         self._in_order = True
         self._tasks = set()
+        self._timeout = TIMEOUT
 
     @property
     def _client_address(self):
@@ -53,6 +55,7 @@ class RPCProtocol(BaseProtocol):
         if '__init__' in msg:
             init = msg.get('__init__')
             self._in_order = init.get('in_order', True)
+            self._timeout = init.get('timeout', TIMEOUT)
             return
         if '__quit__' in msg:
             self.close()
@@ -125,7 +128,7 @@ class RPCProtocol(BaseProtocol):
             return ret
         call = self._call(func, *args, **kwargs)
         try:
-            result = await call
+            result = await asyncio.wait_for(call, self._timeout)
         except Exception as e:
             ret.update({
                 'result': None,

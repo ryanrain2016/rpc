@@ -7,7 +7,7 @@ server_demo.py:
 import asyncio
 from time import sleep
 
-from rpcserver import App
+from rpc.server import App
 
 app = App()
 
@@ -28,13 +28,13 @@ if __name__ == "__main__":
 ```
 client_demo.py
 ```python
-from rpcclient import Client
+from rpc.client import Client
 import time, asyncio
 
 # 同步代码
 # in_order参数表示，rpc是否按照请求的顺序从服务器端返回，默认为True
 # 注意一个客户端同时异步执行多个函数，那么函数的执行是并发的，返回的顺序与in_order参数有关
-with Client('127.0.0.1', 9090, in_order=False) as c:
+with Client('127.0.0.1', 9090, in_order=False, timeout=60) as c:
     r = c.sleep(2)  # 阻塞执行
     r1 = c.sleep(1)  # 阻塞执行
     print(r1) # sleep 1 s
@@ -46,7 +46,7 @@ with Client('127.0.0.1', 9090, in_order=False) as c:
 
 async def main():
     # 异步代码
-    async with Client('127.0.0.1', 9090, in_order=False) as c:
+    async with Client('127.0.0.1', 9090, in_order=False, timeout=60) as c:
         r = await c.async_sleep(1)   # 等待1s
         print(r)
         r1 = await c.call('async_sleep', 2) # 等待2s
@@ -62,7 +62,7 @@ if __name__ == "__main__":
 # 扩展
 1. 自定义parser类可以实现自定义的协议方式
 ```python
-from rpcclient.parsers import BaseParser
+from rpc.parsers import BaseParser
 
 class SomeParser(BaseParser):
     def feed(self, data):
@@ -84,6 +84,5 @@ app.run(host, port, parser_factory=SomeParser)
 客户端也需要同样的解析器
 
 # TODO
-1. 超时机制
-2. 并发控制
-3. 签名校验（可通过自定义解析器实现）
+1. 并发控制
+2. 签名校验（可通过自定义解析器实现）

@@ -4,8 +4,8 @@ import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
 
-from .exceptions import ParseError
-from .utils import to_bytes
+from ..exceptions import ParseError
+from ..utils import to_bytes
 
 class BaseWrapper:
     def __init__(self, client):
@@ -23,17 +23,20 @@ class BaseWrapper:
         if request_id not in self._futs:
             self.close()
             return
-        fut = self._futs.get(request_id)
+        fut = self._futs.pop(request_id)
         if msg.get('ret_code') == 200:
             fut.set_result(msg.get('result'))
         else:
             fut.set_exception(ValueError(msg.get('msg')))
-        del self._futs[request_id]
+        
 
     def send_init(self, **kw):
         raise NotImplementedError
 
     def send(self, data):
+        raise NotImplementedError
+
+    def close(self):
         raise NotImplementedError
 
 class Wrapper(BaseWrapper):

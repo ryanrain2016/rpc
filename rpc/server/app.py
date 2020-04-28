@@ -1,5 +1,5 @@
 import asyncio
-from .parsers import MutilJsonParser
+from ..parsers import MutilJsonParser
 from .protocol import RPCProtocol
 
 class App:
