@@ -4,10 +4,11 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-from ..exceptions import ParseError, NeedMore
+from ..exceptions import ParseError, NeedMore, Abort, ResponseThenAbort, Response
 from ..logger import logger
 from ..parsers import MutilJsonParser
 from ..consts import TIMEOUT
+from ..utils import to_str
 
 
 class BaseProtocol(asyncio.Protocol):
@@ -57,8 +58,12 @@ class RPCProtocol(BaseProtocol):
             self._in_order = init.get('in_order', True)
             self._timeout = init.get('timeout', TIMEOUT)
             return
-        if '__quit__' in msg:
+        elif '__quit__' in msg:
             self.close()
+            return
+        elif '__response__' in msg:
+            resp = msg.get('__response__')
+            self.write(resp)
             return
         fut = asyncio.ensure_future(self.handler_msg(msg))
         if self._in_order:
@@ -89,6 +94,13 @@ class RPCProtocol(BaseProtocol):
             self.close()
         except NeedMore:
             pass
+        except Abort:
+            self.close()
+        except (ResponseThenAbort, Response) as e:
+            ret = e.args[0]
+            self.write(ret)
+            if type(e) is ResponseThenAbort:
+                self.close()
 
     def _async_wrapper(self, func):
         @wraps(func)
@@ -114,7 +126,7 @@ class RPCProtocol(BaseProtocol):
         request_id = msg.get('request_id')
         func_name = msg.get('func_name')
         args = msg.get('args', ())
-        kwargs = msg.get('kwargs', {})
+        kwargs = msg.get('kw', {})
         ret = {
             "request_id": request_id,
             "func_name": func_name,

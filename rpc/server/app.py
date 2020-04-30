@@ -8,20 +8,20 @@ class App:
         self.parser_factory = parser_factory
         self._handler_map = {}
 
-    async def async_run(self, host, port, protocol_factory=None, parser_factory=None):
+    async def async_run(self, host, port, protocol_factory=None, parser_factory=None, **kw):
         protocol_factory = protocol_factory or self.protocol_factory
         parser_factory = parser_factory or self.parser_factory
         loop = asyncio.get_event_loop()
         server = await loop.create_server(
             lambda: protocol_factory(self, parser_factory),
-            host, port)
+            host, port, **kw)
         async with server:
             await server.serve_forever()
 
-    def run(self, host, port, protocol_factory=None, parser_factory=None):
+    def run(self, host, port, protocol_factory=None, parser_factory=None, **kw):
         loop = asyncio.get_event_loop()
         try:
-            loop.run_until_complete(self.async_run(host, port, protocol_factory, parser_factory))
+            loop.run_until_complete(self.async_run(host, port, protocol_factory, parser_factory, **kw))
         finally:
             loop.close()
 

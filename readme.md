@@ -83,6 +83,22 @@ app.run(host, port, parser_factory=SomeParser)
 ```
 客户端也需要同样的解析器
 
+# 连接ssl/tls加密
+服务端
+```python
+from rpc.server import App
+
+app = App()
+app.run(host, port, ssl=server_ssl_context)
+```
+客户端
+```python
+with Client('127.0.0.1', 9090, in_order=False, timeout=60,
+        ssl=client_ssl_context,
+        server_hostname=server_hostname) as c:
+    pass
+```
+
 # TODO
 1. 并发控制
 2. 签名校验（可通过自定义解析器实现）

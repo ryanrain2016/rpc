@@ -9,9 +9,7 @@ from ..utils import to_bytes
 
 class BaseWrapper:
     def __init__(self, client):
-        self.host = client.host
-        self.port = client.port
-        self.kw = client.kw
+        self._client = client
         parser_factory = client.parser_factory
         self._parser = parser_factory(self)
         self._futs = {}
@@ -28,7 +26,6 @@ class BaseWrapper:
             fut.set_result(msg.get('result'))
         else:
             fut.set_exception(ValueError(msg.get('msg')))
-        
 
     def send_init(self, **kw):
         raise NotImplementedError
@@ -57,11 +54,18 @@ class Wrapper(BaseWrapper):
                 break
         self.close()
 
-    def connect(self):
-        self.conn = socket.create_connection((self.host, self.port))
-        in_order = self.kw.get('in_order', True)
-        if not in_order:
-            self.send_init(in_order=in_order)
+    def connect(self, **kw):
+        self.conn = socket.create_connection((self._client.host, self._client.port))
+        ssl = kw.get('ssl')
+        server_hostname = kw.get('server_hostname')
+        if ssl is not None:
+            if server_hostname:
+                self.conn = ssl.wrap_socket(self.conn, server_hostname)
+            else:
+                self.close()
+                raise ValueError('server_hostname missing')
+
+        self.send_init(in_order=self._client.in_order, timeout=self._client.timeout)
         self._response_handler = self._excutor.submit(self.get_response)
 
     def send_init(self, **kw):
@@ -107,8 +111,8 @@ class Wrapper(BaseWrapper):
         if self._is_closing:
             return
         self._is_closing = True
-        for fut in self._futs:
-            fut.set_exception(asyncio.CancelledError)
+        for fut in self._futs.values():
+            fut.set_exception(ConnectionAbortedError("connection abort."))
         self._futs = {}
         if self.conn is not None:
             self.send({'__quit__': True})
@@ -127,19 +131,23 @@ class AsyncWrapper(BaseWrapper, asyncio.Protocol):
         self._loop = asyncio.get_event_loop()
 
     def close(self):
+        if self._is_closing:
+            return
+        self._is_closing = True
         if self.conn and not self.conn.is_closing():
             self.send({'__quit__': True})
             self.conn.close()
             self.conn = None
+        for fut in self._futs.values():
+            fut.set_exception(ConnectionAbortedError("connection abort."))
+        self._futs = {}
 
     def connection_made(self, transport):
         self.conn = transport
 
-    async def connect(self):
-        await self._loop.create_connection(lambda: self, self.host, self.port)
-        in_order = self.kw.get('in_order', True)
-        if not in_order:
-            self.send_init(in_order=in_order)
+    async def connect(self, **kw):
+        await self._loop.create_connection(lambda: self, self.host, self.port, **kw)
+        self.send_init(in_order=self._client.in_order, timeout=self._client.timeout)
 
     def send_init(self, **kw):
         data = {'__init__': kw}
