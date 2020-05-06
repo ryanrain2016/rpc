@@ -162,7 +162,7 @@ class AsyncWrapper(BaseWrapper, asyncio.Protocol):
         try:
             self._parser.feed(data)
         except ParseError:
-            asyncio.ensure_future(self.close())
+            self.close()
 
     def _wrapper(self, func_name):
         def inner(*args, **kw):

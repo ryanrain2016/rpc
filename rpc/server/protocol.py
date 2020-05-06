@@ -65,7 +65,7 @@ class RPCProtocol(BaseProtocol):
             resp = msg.get('__response__')
             self.write(resp)
             return
-        fut = asyncio.ensure_future(self.handler_msg(msg))
+        fut = asyncio.ensure_future(self.handle_msg(msg))
         if self._in_order:
             self._task_queue.put_nowait(fut)
         else:
@@ -122,7 +122,7 @@ class RPCProtocol(BaseProtocol):
     def get_callable(self, name):
         return self._app._handler_map.get(name)
 
-    async def handler_msg(self, msg):
+    async def handle_msg(self, msg):
         request_id = msg.get('request_id')
         func_name = msg.get('func_name')
         args = msg.get('args', ())
